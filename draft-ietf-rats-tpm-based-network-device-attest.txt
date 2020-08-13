@@ -5,19 +5,20 @@
 RATS Working Group                                    G.C. Fedorkow, Ed.
 Internet-Draft                                    Juniper Networks, Inc.
 Intended status: Informational                                   E. Voit
-Expires: 9 January 2021                              Cisco Systems, Inc.
+Expires: 14 February 2021                            Cisco Systems, Inc.
                                                      J. Fitzgerald-McKay
                                                 National Security Agency
-                                                             8 July 2020
+                                                          13 August 2020
 
 
          TPM-based Network Device Remote Integrity Verification
-           draft-ietf-rats-tpm-based-network-device-attest-01
+           draft-ietf-rats-tpm-based-network-device-attest-03
 
 Abstract
 
    This document describes a workflow for remote attestation of the
-   integrity of network devices.
+   integrity of firmware and software installed on network devices that
+   contain Trusted Platform Modules [TPM].
 
 Discussion Venues
 
@@ -48,14 +49,13 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 9 January 2021.
+   This Internet-Draft will expire on 14 February 2021.
 
 
 
-
-Fedorkow, et al.         Expires 9 January 2021                 [Page 1]
+Fedorkow, et al.        Expires 14 February 2021                [Page 1]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
 Copyright Notice
@@ -96,28 +96,33 @@ Table of Contents
        3.1.2.  Keys  . . . . . . . . . . . . . . . . . . . . . . . .  19
        3.1.3.  Appraisal Policy for Evidence . . . . . . . . . . . .  19
      3.2.  Reference Model for Challenge-Response  . . . . . . . . .  20
-       3.2.1.  Transport and Encoding  . . . . . . . . . . . . . . .  21
+       3.2.1.  Transport and Encoding  . . . . . . . . . . . . . . .  22
      3.3.  Centralized vs Peer-to-Peer . . . . . . . . . . . . . . .  22
    4.  Privacy Considerations  . . . . . . . . . . . . . . . . . . .  23
    5.  Security Considerations . . . . . . . . . . . . . . . . . . .  24
-   6.  Conclusion  . . . . . . . . . . . . . . . . . . . . . . . . .  28
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  29
-   8.  Appendix  . . . . . . . . . . . . . . . . . . . . . . . . . .  29
-     8.1.  Layering Model for Network Equipment Attester and
-           Verifier  . . . . . . . . . . . . . . . . . . . . . . . .  29
-       8.1.1.  Why is OS Attestation Different?  . . . . . . . . . .  31
+     5.1.  Keys Used in RIV  . . . . . . . . . . . . . . . . . . . .  25
+     5.2.  Prevention of Spoofing and Man-in-the-Middle Attacks  . .  26
+     5.3.  Replay Attacks  . . . . . . . . . . . . . . . . . . . . .  27
+     5.4.  Owner-Signed Keys . . . . . . . . . . . . . . . . . . . .  28
+     5.5.  Other Trust Anchors . . . . . . . . . . . . . . . . . . .  28
+   6.  Conclusion  . . . . . . . . . . . . . . . . . . . . . . . . .  29
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                 [Page 2]
+Fedorkow, et al.        Expires 14 February 2021                [Page 2]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
-     8.2.  Implementation Notes  . . . . . . . . . . . . . . . . . .  31
-     8.3.  Root of Trust for Measurement . . . . . . . . . . . . . .  33
-   9.  Informative References  . . . . . . . . . . . . . . . . . . .  33
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  38
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  30
+   8.  Appendix  . . . . . . . . . . . . . . . . . . . . . . . . . .  30
+     8.1.  Layering Model for Network Equipment Attester and
+           Verifier  . . . . . . . . . . . . . . . . . . . . . . . .  30
+       8.1.1.  Why is OS Attestation Different?  . . . . . . . . . .  32
+     8.2.  Implementation Notes  . . . . . . . . . . . . . . . . . .  32
+     8.3.  Root of Trust for Measurement . . . . . . . . . . . . . .  34
+   9.  Informative References  . . . . . . . . . . . . . . . . . . .  34
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  39
 
 1.  Introduction
 
@@ -142,7 +147,7 @@ Internet-Draft             Network Device RIV                  July 2020
    scalable attestation procedure working with commercial networking
    products such as routers, switches and firewalls.  An underlying
    assumption will be the availability within the device of a Trusted
-   Platform Module (TPM) compliant cryptoprocessor to enable the remote
+   Platform Module [TPM] compliant cryptoprocessor to enable the remote
    trustworthy assessment of the device's software and hardware.
 
 1.1.  Terminology
@@ -154,21 +159,22 @@ Internet-Draft             Network Device RIV                  July 2020
 
    Additionally, this document defines the following terms:
 
+
+
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021                [Page 3]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
    Attestation: the process of creating, conveying and appraising
    assertions about Platform trustworthiness characteristics, including
    supply chain trust, identity, platform provenance, software
    configuration, hardware configuration, platform composition,
    compliance to test suites, functional and assurance evaluations, etc.
-
-
-
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                 [Page 3]
-
-Internet-Draft             Network Device RIV                  July 2020
-
 
    The goal of attestation is simply to assure an administrator that the
    software that was launched when the device was last started is an
@@ -213,18 +219,14 @@ Internet-Draft             Network Device RIV                  July 2020
    *  Privacy and Security shows how specific features of RIV contribute
       to the trustworthiness of the attestation result
 
-   *  Supporting material is in an appendix at the end.
 
 
-
-
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                 [Page 4]
+Fedorkow, et al.        Expires 14 February 2021                [Page 4]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
+
+   *  Supporting material is in an appendix at the end.
 
 1.3.  Goals
 
@@ -242,9 +244,8 @@ Internet-Draft             Network Device RIV                  July 2020
 
    *  Provable Device Identity - This specification requires that an
       attesting device includes a cryptographic identifier unique to
-      each device.  Effectively this means that the TPM or equivalent
-      cryptoprocessor must be so provisioned during the manufacturing
-      cycle.
+      each device.  Effectively this means that the TPM must be so
+      provisioned during the manufacturing cycle.
 
    *  Software Inventory - A key goal is to identify the software
       release installed on the attesting device, and to provide evidence
@@ -264,7 +265,7 @@ Internet-Draft             Network Device RIV                  July 2020
 1.4.  Description of Remote Integrity Verification (RIV)
 
    Attestation requires two interlocking services between the Attester
-   network device and the Verifier::
+   network device and the Verifier:
 
    *  Platform Identity, the mechanism providing trusted identity, can
       reassure network managers that the specific devices they ordered
@@ -276,10 +277,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-
-Fedorkow, et al.         Expires 9 January 2021                 [Page 5]
+Fedorkow, et al.        Expires 14 February 2021                [Page 5]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    *  Software Measurement is the mechanism that reports the state of
@@ -310,8 +310,8 @@ Internet-Draft             Network Device RIV                  July 2020
        measurements, started by a Root of Trust for Measurement, that
        normally ends when the system software is loaded.  A measurement
        signifies the identity, integrity and version of each software
-       component registered with an attesting device's TPM, so that the
-       subsequent appraisal stage can determine if the software
+       component registered with an attesting device's TPM [TPM], so
+       that the subsequent appraisal stage can determine if the software
        installed is authentic, up-to-date, and free of tampering.
 
    4.  Conveyance of Evidence reliably transports at least the minimum
@@ -333,9 +333,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                 [Page 6]
+Fedorkow, et al.        Expires 14 February 2021                [Page 6]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    5.  Finally, Appraisal of Evidence occurs.  As the Verifier and
@@ -363,12 +363,16 @@ Internet-Draft             Network Device RIV                  July 2020
 
    1.  Platform Attestation provides evidence of configuration of
        software elements present in the device.  This form of
-       attestation can be implemented with TPM PCR, Quote and Log
-       mechanisms, which provide an authenticated mechanism to report
-       what software was started on the device through the boot cycle.
-       Successful attestation requires an unbroken chain from a boot-
-       time root of trust through all layers of software needed to bring
-       the device to an operational state.
+       attestation can be implemented with TPM Platform Configuration
+       Registers (PCRs), Quote and Log mechanisms, which provide an
+       authenticated mechanism to report what software was started on
+       the device through the boot cycle.  Successful attestation
+       requires an unbroken chain from a boot-time root of trust through
+       all layers of software needed to bring the device to an
+       operational state, in which each stage measures components of the
+       next stage, updates the attestation log, and extends hashes into
+       a PCR.  The TPM can then report the hashes of all the measured
+       hashes as a signed Quote (see [TPM] for many more details).
 
    2.  Reference Integrity Measurements must be conveyed from the
        Endorser (the entity accepted as the software authority, often
@@ -383,17 +387,16 @@ Internet-Draft             Network Device RIV                  July 2020
    compromised status.  (See Section 5 for further Security
    Considerations)
 
+
+
+Fedorkow, et al.        Expires 14 February 2021                [Page 7]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
    RIV attestation is designed to be simple to deploy at scale.  RIV
    should work "out of the box" as far as possible, that is, with the
    fewest possible provisioning steps or configuration databases needed
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                 [Page 7]
-
-Internet-Draft             Network Device RIV                  July 2020
-
-
    at the end-user's site, as network equipment is often required to
    "self-configure", to reliably reach out without manual intervention
    to prove its identity and operating posture, then download its own
@@ -417,10 +420,10 @@ Internet-Draft             Network Device RIV                  July 2020
       networking equipment such as YANG [RFC7950] and NETCONF [RFC6241],
       but not generally used in other applications.
 
-   *  The approach outlined in this document mandates the use of TPM 1.2
-      or TPM 2.0.  Other roots of trust could be used with the same
-      information flow, although different data structures would likely
-      be called for.
+   *  The approach outlined in this document mandates the use of a
+      compliant TPM [TPM].  Other roots of trust could be used with the
+      same information flow, although they're out of scope for this
+      document.
 
 1.6.1.  Out of Scope
 
@@ -439,17 +442,17 @@ Internet-Draft             Network Device RIV                  July 2020
       Although out of scope for RIV, Trusted Computing Group
       specifications do encompass sleep and hibernate states.
 
+
+
+
+Fedorkow, et al.        Expires 14 February 2021                [Page 8]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
    *  Virtualization and Containerization: In a non-virtualized system,
       the host OS is responsible for measuring each Userland file or
       process, but that't the end of the chain of trust.  For
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                 [Page 8]
-
-Internet-Draft             Network Device RIV                  July 2020
-
-
       virtualized systems, the host OS must verify the hypervisor, which
       then manages its own chain of trust through the virtual machine.
       Virtualization and containerization technologies are increasingly
@@ -498,12 +501,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                 [Page 9]
+Fedorkow, et al.        Expires 14 February 2021                [Page 9]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
        +-------------------------------------------------------+
@@ -557,9 +557,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 10]
+Fedorkow, et al.        Expires 14 February 2021               [Page 10]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    *  Configuration - Many devices offer numerous options controlled by
@@ -613,9 +613,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 11]
+Fedorkow, et al.        Expires 14 February 2021               [Page 11]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    +------------------------------------------------------------------+
@@ -669,9 +669,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 12]
+Fedorkow, et al.        Expires 14 February 2021               [Page 12]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    *  PCR[2] is intended to represent a "user configurable" environment
@@ -725,9 +725,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 13]
+Fedorkow, et al.        Expires 14 February 2021               [Page 13]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    *  An Attestation Key is required to sign the Quote generated by the
@@ -781,9 +781,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 14]
+Fedorkow, et al.        Expires 14 February 2021               [Page 14]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    4.  Signed Reference Integrity Manifests (RIMs), containing Reference
@@ -837,9 +837,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 15]
+Fedorkow, et al.        Expires 14 February 2021               [Page 15]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    2.  Measurements of firmware and bootable modules may be taken
@@ -887,15 +887,15 @@ Internet-Draft             Network Device RIV                  July 2020
 
    *  The product is equipped with a Root of Trust for Measurement, Root
       of Trust for Storage and Root of Trust for Reporting (as defined
-      in [GloPlaRoT]) that are capable of conforming to the TCG Trusted
+      in [SP800-155]) that are capable of conforming to the TCG Trusted
       Attestation Protocol (TAP) Information Model [TAP].
 
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 16]
+Fedorkow, et al.        Expires 14 February 2021               [Page 16]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    *  The vendor will ship Reference Integrity Measurements (i.e.,
@@ -949,9 +949,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 17]
+Fedorkow, et al.        Expires 14 February 2021               [Page 17]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    how SWID tags should be structured to allow attestation, and defines
@@ -1005,9 +1005,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 18]
+Fedorkow, et al.        Expires 14 February 2021               [Page 18]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
 3.1.1.  Unique Device Identity
@@ -1061,9 +1061,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 19]
+Fedorkow, et al.        Expires 14 February 2021               [Page 19]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
            Figure 4: Appraisal Policy for Evidence Prerequisites
@@ -1084,45 +1084,55 @@ Internet-Draft             Network Device RIV                  July 2020
 
    Once the prerequisites for RIV are met, a Verifier may acquire
    Evidence from an Attester.  The following diagram illustrates a RIV
-   information flow between a Verifier and an Attester.  Event times
-   shown correspond to the time types described within Appendix A of
-   [I-D.ietf-rats-architecture]:
+   information flow between a Verifier and an Attester, derived from
+   Section 8.1 of [I-D.birkholz-rats-reference-interaction-model].
+   Event times shown correspond to the time types described within
+   Appendix A of [I-D.ietf-rats-architecture]:
 
-   .----------.                        .--------------------------.
-   | Attester |                        | Relying Party / Verifier |
-   '----------'                        '--------------------------'
-      time(vg)                                              |
-        |<-- requestAttestation(nonce,PcrSelection)-------time(ns)
-        |                                                   |
-      time(eg) LogEvidence(assertionsSelection)             |
-        |      SignedPcrEvidence(PCR, nonce)                |
-        |                                                   |
-        |-----------LogEvidence,SignedPcrEvidence---------->|
-        |                                                   |
-        |                       verifyAttestationEvidence time(rg,ra)
-        |                                                   ~
-                                                          time(rx)
+   .----------.                                .--------------------------.
+   | Attester |                                | Relying Party / Verifier |
+   '----------'                                '--------------------------'
+      time(VG)                                                       |
+   valueGeneration(targetEnvironment)                                |
+        | => claims                                                  |
+        |                                                            |
+        | <--------------requestEvidence(nonce, PcrSelection)-----time(NS)
+        |                                                            |
+      time(EG)                                                       |
+   evidenceGeneration(nonce, PcrSelection, collectedClaims)          |
+        | => SignedPcrEvidence(nonce, PcrSelection)                  |
+        | => LogEvidence(collectedClaims)                            |
+        |                                                            |
+        | returnSignedPcrEvidence----------------------------------> |
+        | returnLogEvidence----------------------------------------> |
+        |                                                            |
+        |                                                       time(RG,RA)
+        |         evidenceAppraisal(SignedPcrEvidence, eventLog, refClaims)
+        |                                       attestationResult <= |
+        ~                                                            ~
+        |                                                          time(RX)
 
                 Figure 5: IETF Attestation Information Flow
 
-   *  time(vg): One or more Attesting Network Device PCRs are extended
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 20]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
+   *  time(VG): One or more Attesting Network Device PCRs are extended
       with measurements.
 
-   *  time(ns): The Verifier generates a unique nonce ("number used
+   *  time(NS): The Verifier generates a unique nonce ("number used
       once"), and makes a request attestation data for one or more PCRs
       from an Attester.  This can be accomplished via a YANG [RFC7950]
       interface that implements the TCG TAP model (e.g.  YANG Module for
       Basic Challenge-Response-based Remote Attestation Procedures
       [I-D.ietf-rats-yang-tpm-charra]).
 
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 20]
-
-Internet-Draft             Network Device RIV                  July 2020
-
-
-   *  time(eg): On the Attester, measured values are retrieved from the
+   *  time(EG): On the Attester, measured values are retrieved from the
       Attester's TPM.  This requested PCR evidence is signed by the
       Attestation Identity Key (AIK) associated with the DevID.  Quotes
       are retrieved according to TCG TAP Information Model [TAP].  While
@@ -1137,13 +1147,19 @@ Internet-Draft             Network Device RIV                  July 2020
 
    *  Collected Evidence is passed from the Attester to the Verifier
 
-   *  time(rg,ra): The Verifier reviews the Evidence and takes action as
+   *  time(RG,RA): The Verifier reviews the Evidence and takes action as
       needed.  As the Relying Party and Verifier are assumed co-
       resident, this can happen in one step.
 
-      -  If the signed PCR values do not match either KGVs, or the set
-         of log entries which have extended a particular PCR, the device
-         should not be trusted.
+      -  If the signed PCR values do not match the set of log entries
+         which have extended a particular PCR, the device should not be
+         trusted.
+
+      -  If the log entries that the verifier considers important do not
+         match known good values, the device should not be trusted.  We
+         note that the process of collecting and analyzing the log can
+         be omitted if the value in the relevant PCR is already a known-
+         good value.
 
       -  If the set of log entries are not seen as acceptable by the
          Appraisal Policy for Evidence, the device should not be
@@ -1153,7 +1169,16 @@ Internet-Draft             Network Device RIV                  July 2020
          provided by the nonce is not included in the response, the
          device should not be trusted.
 
-   *  time(rx): At some point after the verification of Evidence, the
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 21]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
+   *  time(RX): At some point after the verification of Evidence, the
       Attester can no longer be considered Attested as trustworthy.
 
 3.2.1.  Transport and Encoding
@@ -1170,14 +1195,6 @@ Internet-Draft             Network Device RIV                  July 2020
    Retrieval of Log Evidence will be via log interfaces on the network
    device.  (For example, see [I-D.ietf-rats-yang-tpm-charra]).
 
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 21]
-
-Internet-Draft             Network Device RIV                  July 2020
-
-
 3.3.  Centralized vs Peer-to-Peer
 
    Figure 5 above assumes that the Verifier is implicitly trusted, while
@@ -1193,6 +1210,29 @@ Internet-Draft             Network Device RIV                  July 2020
    signed reference measurements (RIMs) so that each device has
    everything needed for attestation, without having to resort to a
    central authority.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 22]
+
+Internet-Draft             Network Device RIV                August 2020
+
 
    +---------------+                             +---------------+
    |               |                             |               |
@@ -1226,14 +1266,6 @@ Internet-Draft             Network Device RIV                  July 2020
    In this application, each device may need to be equipped with signed
    RIMs to act as an Attester, and also a selection of trusted x.509
    root certificates to allow the device to act as a Verifier.  An
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 22]
-
-Internet-Draft             Network Device RIV                  July 2020
-
-
    existing link layer protocol such as 802.1x [IEEE-802.1x] or 802.1AE
    [IEEE-802.1ae], with Evidence being enclosed over a variant of EAP
    [RFC3748] or LLDP [LLDP] are suitable methods for such an exchange.
@@ -1246,6 +1278,17 @@ Internet-Draft             Network Device RIV                  July 2020
 
    *  Packets passing through the device must not be sent to
       unauthorized destinations.  For example:
+
+
+
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 23]
+
+Internet-Draft             Network Device RIV                August 2020
+
 
       -  Routers often act as Policy Enforcement Points, where
          individual subscribers may be checked for authorization to
@@ -1280,16 +1323,6 @@ Internet-Draft             Network Device RIV                  July 2020
 
    See [NetEq] for more context on privacy in networking devices
 
-
-
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 23]
-
-Internet-Draft             Network Device RIV                  July 2020
-
-
 5.  Security Considerations
 
    Attestation results from the RIV procedure are subject to a number of
@@ -1305,6 +1338,15 @@ Internet-Draft             Network Device RIV                  July 2020
       device
 
    *  Replay attacks may be attempted by a compromised device
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 24]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
+5.1.  Keys Used in RIV
 
    Trustworthiness of RIV attestation depends strongly on the validity
    of keys used for identity and attestation reports.  RIV takes full
@@ -1338,14 +1380,6 @@ Internet-Draft             Network Device RIV                  July 2020
    (e.g.  Secure ZTP, [RFC8572]), where keys which have predictable
    trust properties are provisioned by the device vendor.
 
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 24]
-
-Internet-Draft             Network Device RIV                  July 2020
-
-
    Device identity in RIV is based on IEEE 802.1AR DevID.  This
    specification provides several elements
 
@@ -1359,6 +1393,14 @@ Internet-Draft             Network Device RIV                  July 2020
    The x.509 certificate contains several components
 
    *  The public part of the unique DevID key assigned to that device
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 25]
+
+Internet-Draft             Network Device RIV                August 2020
+
 
    *  An identifying string that's unique to the manufacturer of the
       device.  This is normally the serial number of the unit, which
@@ -1385,6 +1427,13 @@ Internet-Draft             Network Device RIV                  July 2020
    reformatting to a different data format) will be detected as
    tampering.
 
+   Requiring results of attestation of the operating software to be
+   signed by a key known only to the TPM also removes the need to trust
+   the device's operating software (beyond the first measurement; see
+   below); any changes to the quote, generated and signed by the TPM
+   itself, made by malicious device software, or in the path back to the
+   verifier, will invalidate the signature on the quote.
+
    A critical feature of the YANG model described in
    [I-D.ietf-rats-yang-tpm-charra] is the ability to carry TPM data
    structures in their native format, without requiring any changes to
@@ -1395,15 +1444,19 @@ Internet-Draft             Network Device RIV                  July 2020
    that tampering anywhere in the path between the TPM itself and the
    Verifier can be detected.
 
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 25]
-
-Internet-Draft             Network Device RIV                  July 2020
-
+5.2.  Prevention of Spoofing and Man-in-the-Middle Attacks
 
    Prevention of spoofing attacks against attestation systems is also
    important.  There are two cases to consider:
+
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 26]
+
+Internet-Draft             Network Device RIV                August 2020
+
 
    *  The entire device could be spoofed, that is, when the Verifier
       goes to verify a specific device, it might be redirected to a
@@ -1441,22 +1494,7 @@ Internet-Draft             Network Device RIV                  July 2020
    *  The AK is used to sign attestation quotes, providing proof that
       the attestation evidence comes from the same device.
 
-
-
-
-
-
-
-
-
-
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 26]
-
-Internet-Draft             Network Device RIV                  July 2020
-
+5.3.  Replay Attacks
 
    Replay attacks, where results of a previous attestation are submitted
    in response to subsequent requests, are usually prevented by
@@ -1469,12 +1507,14 @@ Internet-Draft             Network Device RIV                  July 2020
    [I-D.birkholz-rats-tuda] provides an alternate mechanism to verify
    freshness without requiring a request/response cycle.
 
-   Requiring results of attestation of the operating software to be
-   signed by a key known only to the TPM also removes the need to trust
-   the device's operating software (beyond the first measurement; see
-   below); any changes to the quote, generated and signed by the TPM
-   itself, made by malicious device software, or in the path back to the
-   verifier, will invalidate the signature on the quote.
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 27]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
+5.4.  Owner-Signed Keys
 
    Although RIV recommends that device manufacturers pre-provision
    devices with easily-verified DevID and AK certs, use of those
@@ -1504,16 +1544,6 @@ Internet-Draft             Network Device RIV                  July 2020
    installation of the Local keys can only be done by some process that
    runs before the device is configured for network operation.
 
-
-
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 27]
-
-Internet-Draft             Network Device RIV                  July 2020
-
-
    On the other end of the device life cycle, provision should be made
    to wipe Local keys when a device is decommissioned, to indicate that
    the device is no longer owned by the enterprise.  The manufacturer's
@@ -1521,12 +1551,24 @@ Internet-Draft             Network Device RIV                  July 2020
    information that's not already printed on the device's serial number
    plate.
 
+5.5.  Other Trust Anchors
+
    In addition to trustworthy provisioning of keys, RIV depends on other
-   trust anchors.  (See [GloPlaRoT] for definitions of Roots of Trust.)
+   trust anchors.  (See [SP800-155] for definitions of Roots of Trust.)
 
    *  Secure identity depends on mechanisms to prevent per-device secret
       keys from being compromised.  The TPM provides this capability as
       a Root of Trust for Storage
+
+
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 28]
+
+Internet-Draft             Network Device RIV                August 2020
+
 
    *  Attestation depends on an unbroken chain of measurements, starting
       from the very first measurement.  That first measurement is made
@@ -1551,6 +1593,23 @@ Internet-Draft             Network Device RIV                  July 2020
    shipped as a self-contained package, RIMs signed by the manufacturer
    and delivered in-band may be more convenient for the device owner.
 
+   The validity of RIV attestation results is also influenced by
+   procedures used to create reference measurements:
+
+   *  While the RIM itself is signed, supply-chains must be carefully
+      scrutinized to ensure that the values are not subject to
+      unexpected manipulation prior to signing.  Insider-attacks against
+      code bases and build chains are particularly hard to spot.
+
+   *  Designers must guard against hash collision attacks.  Reference
+      measurements often give hashes for large objects of indeterminate
+      size; if one of the measured objects can be replaced with an
+      implant engineered to produce the same hash, RIV will be unable to
+      detect the substitution.  TPM1.2 uses SHA-1 hashes only, which
+      have been shown to be susceptible to collision attack.  TPM2.0
+      will produce quotes with SHA-256, which so far has resisted such
+      attacks, and consequently is preferred.
+
 6.  Conclusion
 
    TCG technologies can play an important part in the implementation of
@@ -1560,15 +1619,15 @@ Internet-Draft             Network Device RIV                  July 2020
    *  Platform identity can be based on IEEE 802.1AR Device identity,
       coupled with careful supply-chain management by the manufacturer.
 
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 29]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
    *  Complex supply chains can be certified using TCG Platform
       Certificates [Platform-Certificates]
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 28]
-
-Internet-Draft             Network Device RIV                  July 2020
-
 
    *  The TCG TAP mechanism can be used to retrieve attestation
       evidence.  Work is needed on a YANG model for this protocol.
@@ -1618,12 +1677,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 29]
+Fedorkow, et al.        Expires 14 February 2021               [Page 30]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    +-----------------------+              +-------------------------+
@@ -1677,9 +1733,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 30]
+Fedorkow, et al.        Expires 14 February 2021               [Page 31]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    YANG modules are works in progress.  Information Model layers
@@ -1733,9 +1789,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 31]
+Fedorkow, et al.        Expires 14 February 2021               [Page 32]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    |      of the box                                 |-----------------
@@ -1789,9 +1845,9 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 32]
+Fedorkow, et al.        Expires 14 February 2021               [Page 33]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    |    o  A Posture Manager Server                  |                |
@@ -1811,7 +1867,7 @@ Internet-Draft             Network Device RIV                  July 2020
    chain of trust required to attest that each stage of system startup
    is verified, a Root of Trust for Storage (i.e., the TPM PCRs) to
    record the results, and a Root of Trust for Reporting to report the
-   results [TCGRoT], [GloPlaRoT].
+   results [TCGRoT], [SP800-155].
 
    While there are many complex aspects of a Root of Trust, two aspects
    that are important in the case of attestation are:
@@ -1830,11 +1886,12 @@ Internet-Draft             Network Device RIV                  July 2020
 9.  Informative References
 
    [AIK-Enrollment]
-              Trusted Computing Group, "TCG Infrastructure Working
-              GroupA CMC Profile for AIK Certificate Enrollment Version
+              Trusted Computing Group, "TCG Infrastructure Working Group
+              - A CMC Profile for AIK Certificate Enrollment Version
               1.0, Revision 7", March 2011,
-              <https://trustedcomputinggroup.org/wp-content/uploads/
-              IWG_CMC_Profile_Cert_Enrollment_v1_r7.pdf>.
+              <https://trustedcomputinggroup.org/resource/tcg-
+              infrastructure-working-group-a-cmc-profile-for-aik-
+              certificate-enrollment/>.
 
    [Canonical-Event-Log]
               Trusted Computing Group, "DRAFT Canonical Event Log Format
@@ -1844,30 +1901,31 @@ Internet-Draft             Network Device RIV                  July 2020
 
 
 
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 33]
+Fedorkow, et al.        Expires 14 February 2021               [Page 34]
 
-Internet-Draft             Network Device RIV                  July 2020
+Internet-Draft             Network Device RIV                August 2020
 
 
    [EFI-TPM]  Trusted Computing Group, "TCG EFI Platform Specification
               for TPM Family 1.1 or 1.2, Specification Version 1.22,
               Revision 15", January 2014,
-              <https://trustedcomputinggroup.org/wp-content/uploads/EFI-
-              Protocol-Specification-rev13-160330final.pdf>.
+              <https://trustedcomputinggroup.org/resource/tcg-efi-
+              platform-specification/>.
 
-   [GloPlaRoT]
-              GlobalPlatform Technology, "Root of Trust Definitions and
-              Requirements Version 1.1", June 2018,
-              <https://globalplatform.org/specs-library/globalplatform-
-              root-of-trust-definitions-and-requirements/>.
+   [I-D.birkholz-rats-reference-interaction-model]
+              Birkholz, H., Eckel, M., Newton, C., and L. Chen,
+              "Reference Interaction Models for Remote Attestation
+              Procedures", Work in Progress, Internet-Draft, draft-
+              birkholz-rats-reference-interaction-model-03, 7 July 2020,
+              <http://www.ietf.org/internet-drafts/draft-birkholz-rats-
+              reference-interaction-model-03.txt>.
 
    [I-D.birkholz-rats-tuda]
               Fuchs, A., Birkholz, H., McDonald, I., and C. Bormann,
               "Time-Based Uni-Directional Attestation", Work in
-              Progress, Internet-Draft, draft-birkholz-rats-tuda-02, 9
-              March 2020, <http://www.ietf.org/internet-drafts/draft-
-              birkholz-rats-tuda-02.txt>.
+              Progress, Internet-Draft, draft-birkholz-rats-tuda-03, 13
+              July 2020, <http://www.ietf.org/internet-drafts/draft-
+              birkholz-rats-tuda-03.txt>.
 
    [I-D.birkholz-yang-swid]
               Birkholz, H., "Software Inventory YANG module based on
@@ -1880,8 +1938,8 @@ Internet-Draft             Network Device RIV                  July 2020
               Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
               W. Pan, "Remote Attestation Procedures Architecture", Work
               in Progress, Internet-Draft, draft-ietf-rats-architecture-
-              04, 21 May 2020, <http://www.ietf.org/internet-drafts/
-              draft-ietf-rats-architecture-04.txt>.
+              05, 10 July 2020, <http://www.ietf.org/internet-drafts/
+              draft-ietf-rats-architecture-05.txt>.
 
    [I-D.ietf-rats-eat]
               Mandyam, G., Lundblade, L., Ballesteros, M., and J.
@@ -1889,6 +1947,20 @@ Internet-Draft             Network Device RIV                  July 2020
               Progress, Internet-Draft, draft-ietf-rats-eat-03, 20
               February 2020, <http://www.ietf.org/internet-drafts/draft-
               ietf-rats-eat-03.txt>.
+
+
+
+
+
+
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 35]
+
+Internet-Draft             Network Device RIV                August 2020
+
 
    [I-D.ietf-rats-yang-tpm-charra]
               Birkholz, H., Eckel, M., Bhandari, S., Sulzen, B., Voit,
@@ -1898,13 +1970,6 @@ Internet-Draft             Network Device RIV                  July 2020
               draft-ietf-rats-yang-tpm-charra-02, 24 June 2020,
               <http://www.ietf.org/internet-drafts/draft-ietf-rats-yang-
               tpm-charra-02.txt>.
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 34]
-
-Internet-Draft             Network Device RIV                  July 2020
-
 
    [I-D.ietf-sacm-coswid]
               Birkholz, H., Fitzgerald-McKay, J., Schmidt, C., and D.
@@ -1944,23 +2009,24 @@ Internet-Draft             Network Device RIV                  July 2020
    [IMA]      and , "Integrity Measurement Architecture", June 2019,
               <https://sourceforge.net/p/linux-ima/wiki/Home/>.
 
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 36]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
    [LLDP]     IEEE Computer Society, "802.1AB-2016 - IEEE Standard for
               Local and metropolitan area networks - Station and Media
               Access Control Connectivity Discovery", March 2016,
               <https://standards.ieee.org/standard/802_1AB-2016.html>.
 
    [NetEq]    Trusted Computing Group, "TCG Guidance for Securing
-              Network Equipment", January 2018,
-              <https://trustedcomputinggroup.org/wp-content/uploads/
-              TCG_Guidance_for_Securing_NetEq_1_0r29.pdf>.
-
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 35]
-
-Internet-Draft             Network Device RIV                  July 2020
-
+              Network Equipment, Version 1.0, Revision 29", January
+              2018, <https://trustedcomputinggroup.org/resource/tcg-
+              guidance-securing-network-equipment/>.
 
    [NIST-IR-8060]
               National Institute for Standards and Technology,
@@ -1979,8 +2045,10 @@ Internet-Draft             Network Device RIV                  July 2020
               Trusted Computing Group, "TCG PC Client Specific
               Implementation Specification for Conventional BIOS,
               Specification Version 1.21 Errata, Revision 1.00",
-              February 2012, <https://www.trustedcomputinggroup.org/wp-
-              content/uploads/TCG_PCClientImplementation_1-21_1_00.pdf>.
+              February 2012,
+              <https://trustedcomputinggroup.org/resource/pc-client-
+              work-group-specific-implementation-specification-for-
+              conventional-bios/>.
 
    [PC-Client-BIOS-TPM-2.0]
               Trusted Computing Group, "PC Client Specific Platform
@@ -1992,12 +2060,23 @@ Internet-Draft             Network Device RIV                  July 2020
    [PC-Client-RIM]
               Trusted Computing Group, "DRAFT: TCG PC Client Reference
               Integrity Manifest Specification, v.09", December 2019,
-              <https://trustedcomputinggroup.org/xx>.
+              <https://trustedcomputinggroup.org/wp-content/uploads/
+              TCG_PC_Client_RIM_r0p15_15june2020.pdf>.
 
    [Platform-Certificates]
-              Trusted Computing Group, "DRAFT: TCG Platform Attribute
+              Trusted Computing Group, "TCG Platform Attribute
               Credential Profile, Specification Version 1.0, Revision
-              15, 07 December 2017", December 2017.
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 37]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
+              16", January 2018,
+              <https://trustedcomputinggroup.org/resource/tcg-platform-
+              attribute-credential-profile/>.
 
    [Platform-DevID-TPM-2.0]
               Trusted Computing Group, "DRAFT: TPM Keys for Platform
@@ -2007,22 +2086,14 @@ Internet-Draft             Network Device RIV                  July 2020
    [Platform-ID-TPM-1.2]
               Trusted Computing Group, "TPM Keys for Platform Identity
               for TPM 1.2, Specification Version 1.0, Revision 3",
-              August 2015, <https://trustedcomputinggroup.org/wp-
-              content/uploads/
-              TPM_Keys_for_Platform_Identity_v1_0_r3_Final.pdf>.
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 36]
-
-Internet-Draft             Network Device RIV                  July 2020
-
+              August 2015, <https://trustedcomputinggroup.org/resource/
+              tpm-keys-for-platform-identity-for-tpm-1-2-2/>.
 
    [Provisioning-TPM-2.0]
               Trusted Computing Group, "TCG TPM v2.0 Provisioning
-              Guidance", March 2015, <https://trustedcomputinggroup.org/
-              wp-content/uploads/TCG-TPM-v2.0-Provisioning-Guidance-
-              Published-v1r1.pdf>.
+              Guidance, Version 1.0, Revision 1.0", March 2015,
+              <https://trustedcomputinggroup.org/wp-content/uploads/TCG-
+              TPM-v2.0-Provisioning-Guidance-Published-v1r1.pdf>.
 
    [RFC3748]  Aboba, B., Blunk, L., Vollbrecht, J., Carlson, J., and H.
               Levkowetz, Ed., "Extensible Authentication Protocol
@@ -2052,10 +2123,23 @@ Internet-Draft             Network Device RIV                  July 2020
               DOI 10.17487/RFC8572, April 2019,
               <https://www.rfc-editor.org/info/rfc8572>.
 
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 38]
+
+Internet-Draft             Network Device RIV                August 2020
+
+
    [RIM]      Trusted Computing Group, "DRAFT: TCG Reference Integrity
               Manifest Information Model", June 2019,
               <https://trustedcomputinggroup.org/wp-content/uploads/
               TCG_RIM_Model_v1-r13_2feb20.pdf>.
+
+   [SP800-155]
+              National Institute of Standards and Technology, "BIOS
+              Integrity Measurement Guidelines (Draft)", December 2011,
+              <https://csrc.nist.gov/csrc/media/publications/sp/800-
+              155/draft/documents/draft-sp800-155_dec2011.pdf>.
 
    [SWID]     The International Organization for Standardization/
               International Electrotechnical Commission, "Information
@@ -2063,26 +2147,21 @@ Internet-Draft             Network Device RIV                  July 2020
               Identification Tag, ISO/IEC 19770-2", October 2015,
               <https://www.iso.org/standard/65666.html>.
 
+   [TAP]      Trusted Computing Group, "TCG Trusted Attestation Protocol
+              (TAP) Information Model for TPM Families 1.2 and 2.0 and
+              DICE Family 1.0, Version 1.0, Revision 0.36", October
+              2018, <https://trustedcomputinggroup.org/resource/tcg-tap-
+              information-model/>.
 
-
-
-
-
-
-Fedorkow, et al.         Expires 9 January 2021                [Page 37]
-
-Internet-Draft             Network Device RIV                  July 2020
-
-
-   [TAP]      Trusted Computing Group, "DRAFT: TCG Trusted Attestation
-              Protocol (TAP) Information Model for TPM Families 1.2 and
-              2.0 and DICE Family 1.0, Version 1.0, Revision 0.29",
-              October 2018.
-
-   [TCGRoT]   Trusted Computing Group, "TCG Roots of Trust
+   [TCGRoT]   Trusted Computing Group, "DRAFT: TCG Roots of Trust
               Specification", October 2018,
               <https://trustedcomputinggroup.org/wp-content/uploads/
               TCG_Roots_of_Trust_Specification_v0p20_PUBLIC_REVIEW.pdf>.
+
+   [TPM]      ISO/IEC JTC 1 Information technology, "ISO/IEC
+              11889-1:2015 Information technology -- Trusted platform
+              module library -- Part 1: Architecture", August 2015,
+              <https://www.iso.org/standard/66510.html>.
 
 Authors' Addresses
 
@@ -2098,6 +2177,13 @@ Authors' Addresses
    United States of America
 
    Email: evoit@cisco.com
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 39]
+
+Internet-Draft             Network Device RIV                August 2020
 
 
    Jessica Fitzgerald-McKay
@@ -2125,4 +2211,30 @@ Authors' Addresses
 
 
 
-Fedorkow, et al.         Expires 9 January 2021                [Page 38]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Fedorkow, et al.        Expires 14 February 2021               [Page 40]
